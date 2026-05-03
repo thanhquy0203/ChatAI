@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Báo cáo tiến độ - Hệ thống Chatbot RAG</title>
+
+<style>
+body {
+    font-family: Arial;
+    margin: 40px;
+    line-height: 1.7;
+    width: 50%; align-items: center; justify-self: center;
+}
+h1, h2, h3 {
+    color: #2c3e50;
+}
+code {
+    background: #f4f4f4;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+.section {
+    margin-bottom: 35px;
+}
+.box {
+    background: #eef7ff;
+    padding: 12px;
+    border-left: 5px solid #3498db;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>BÁO CÁO TIẾN ĐỘ PHÁT TRIỂN HỆ THỐNG CHATBOT RAG</h1>
+
+<div class="section">
+<h2>1. Mục tiêu</h2>
+<p>
+Xây dựng hệ thống chatbot có khả năng:
+</p>
+<ul>
+<li>Đọc và hiểu tài liệu PDF</li>
+<li>Trả lời câu hỏi dựa trên nội dung tài liệu</li>
+<li>Giảm thiểu sai lệch của mô hình ngôn ngữ</li>
+<li>Triển khai chạy local (không phụ thuộc API bên ngoài)</li>
+</ul>
+
+<p>
+Giải pháp sử dụng: <b>Retrieval-Augmented Generation (RAG)</b>
+</p>
+</div>
+
+<div class="section">
+<h2>2. Kiến trúc hệ thống</h2>
+
+<div class="box">
+Pipeline:
+<br><br>
+PDF → Chunking → Embedding → FAISS → Retrieval → LLM → Answer
+</div>
+
+<h3>2.1 Thành phần chính</h3>
+
+<ul>
+<li><b>Document Loader:</b> đọc file PDF</li>
+<li><b>Text Splitter:</b> chia nhỏ văn bản</li>
+<li><b>Embedding Model:</b> chuyển text thành vector</li>
+<li><b>Vector Store (FAISS):</b> lưu trữ vector</li>
+<li><b>Retriever:</b> tìm context liên quan</li>
+<li><b>LLM:</b> sinh câu trả lời cuối cùng</li>
+</ul>
+
+</div>
+
+<div class="section">
+<h2>3. Chi tiết triển khai</h2>
+
+<h3>3.1 File ingest.py (Xây dựng vector database)</h3>
+
+<p>
+Pipeline xử lý dữ liệu gồm các bước:
+</p>
+
+<ul>
+<li>Load toàn bộ PDF trong thư mục <code>data/</code></li>
+<li>Sử dụng <code>RecursiveCharacterTextSplitter</code>:
+    <ul>
+        <li>chunk_size = 500</li>
+        <li>chunk_overlap = 50</li>
+    </ul>
+</li>
+<li>Tạo embedding bằng model <code>nomic-embed-text</code></li>
+<li>Lưu vào FAISS tại <code>vectorstores/db_faiss</code></li>
+</ul>
+
+<p><b>Lý do thiết kế:</b></p>
+
+<ul>
+<li><b>Chunking nhỏ (500):</b> giúp tăng độ chính xác retrieval</li>
+<li><b>Overlap (50):</b> tránh mất thông tin giữa các đoạn</li>
+<li><b>FAISS:</b> tốc độ truy vấn nhanh, phù hợp hệ thống local</li>
+</ul>
+
+<p><b>Kết quả:</b></p>
+<ul>
+<li>Dữ liệu được vector hóa hoàn chỉnh</li>
+<li>Cho phép truy vấn semantic search hiệu quả</li>
+</ul>
+
+
+<h3>3.2 File chatbot.py (Hệ thống hỏi đáp)</h3>
+
+<p>
+Sử dụng pipeline RAG thông qua <b>LangChain RetrievalQA</b>
+</p>
+
+<ul>
+<li>Load vector database từ FAISS</li>
+<li>Retriever với <code>top_k = 3</code></li>
+<li>Sử dụng LLM: <code>llama3</code></li>
+<li>Áp dụng custom prompt</li>
+</ul>
+
+<p><b>Thiết kế prompt:</b></p>
+
+<ul>
+<li>Chỉ được trả lời dựa trên context</li>
+<li>Nếu không có thông tin → trả lời "không biết"</li>
+</ul>
+
+<p><b>Cấu hình quan trọng:</b></p>
+
+<ul>
+<li><code>temperature = 0.1</code> → giảm độ ngẫu nhiên</li>
+<li>Giới hạn context → giảm nhiễu</li>
+</ul>
+
+<p><b>Ý nghĩa:</b></p>
+
+<ul>
+<li>Giảm sai lệch</li>
+<li>Tăng độ tin cậy của câu trả lời</li>
+<li>Đảm bảo output bám sát tài liệu</li>
+</ul>
+
+</div>
+
+<div class="section">
+<h2>4. Lý do lựa chọn model</h2>
+
+<h3>4.1 Embedding Model: nomic-embed-text</h3>
+
+<ul>
+<li>Hiệu quả trong semantic search</li>
+<li>Chạy local được</li>
+<li>Tương thích tốt với FAISS và LangChain</li>
+</ul>
+
+<p>
+Không chọn các model lớn hơn vì:
+</p>
+<ul>
+<li>Tốn tài nguyên</li>
+<li>Không cần thiết với bài toán tài liệu nội bộ</li>
+</ul>
+
+
+<h3>4.2 LLM: llama3</h3>
+
+<ul>
+<li>Hiểu ngữ cảnh tốt</li>
+<li>Trả lời chính xác hơn các model nhỏ</li>
+<li>Ổn định khi kết hợp với RAG</li>
+</ul>
+
+
+</div>
+
+<div class="section">
+<h2>5. Kết quả đạt được</h2>
+
+<ul>
+<li>Xây dựng hệ thống RAG</li>
+<li>Truy vấn context chính xác từ tài liệu</li>
+<li>LLM trả lời dựa trên dữ liệu thực</li>
+</ul>
+
+<p><b>Hành vi hệ thống:</b></p>
+
+<ul>
+<li>Câu hỏi có trong tài liệu → trả lời chính xác</li>
+<li>Câu hỏi ngoài tài liệu → trả lời "không biết"</li>
+</ul>
+
+</div>
+
+<div class="section">
+<h2>6. Hạn chế hiện tại</h2>
+
+<ul>
+<li>Embedding chưa tối ưu cho tiếng Việt</li>
+<li>Chưa xử lý tốt tài liệu dạng scan (OCR chưa tích hợp)</li>
+<li>Hệ thống đôi khi trả lời bằng tiếng Anh do ảnh hưởng từ model</li>
+<li>Tốc độ phản hồi còn chậm khi dữ liệu lớn</li>
+<li>Chưa có cơ chế hội thoại nhiều lượt (multi-turn)</li>
+</ul>
+
+</div>
+
+<div class="section">
+<h2>7.Thắc mắc và hướng phát triển</h2>
+
+<ul>
+<li>Làm sao để chọn giá trị top_k tối ưu cho retrieval</li>
+<li>Làm sao để hỗ trợ hội thoại nhiều lượt, trong đó câu hỏi sau có thể kế thừa ngữ cảnh từ câu trước</li>
+<li>Làm sao để tối ưu tốc độ hệ thống (giảm thời gian embedding, retrieval và inference của LLM)</li>
+<li>Có nên sử dụng embedding từ HuggingFace (ví dụ các model dangvantuan/vietnamese-document-embedding, keepitreal/vietnamese-sbert ) để cải thiện chất lượng semantic search cho tiếng Việt</li>
+<li>Khi có tài liệu mới, cần cập nhật vector database như thế nào (thêm/xóa/sửa embedding) mà không phải rebuild toàn bộ hệ thống</li>
+<li>Làm sao tối ưu truy vấn lặp lại (repeated queries), ví dụ sử dụng caching để tránh phải thực hiện retrieval và inference lại từ đầu</li>
+
+</ul>
+
+</div>
+
+
+
+</div>
+
+</body>
+</html>
